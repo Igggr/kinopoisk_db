@@ -18,14 +18,13 @@ DROP TABLE IF EXISTS film_genre;
 DROP TABLE IF EXISTS film_person;
 DROP TABLE IF EXISTS genre;
 DROP TABLE IF EXISTS audience;
-DROP TABLE IF EXISTS person CASCADE;
 DROP TABLE IF EXISTS review;
 DROP TABLE IF EXISTS reviewer;
 DROP TABLE IF EXISTS film;
-DROP TABLE IF EXISTS MPAA;
+DROP TABLE IF EXISTS mpaa;
 DROP TABLE IF EXISTS country;
 DROP TABLE IF EXISTS language;
-
+DROP TABLE IF EXISTS person;
 
 
 CREATE TABLE country (
@@ -34,10 +33,11 @@ CREATE TABLE country (
     flag VARCHAR(20)
 );
 
-CREATE TABLE MPAA (
+CREATE TABLE mpaa (
     id SERIAL PRIMARY KEY,
     letter VARCHAR(1),
-    description TEXT
+    description TEXT,
+    full_desription TEXT
 );
 
 -- актеры и команда 
@@ -54,7 +54,7 @@ CREATE TABLE film (
     release_year INTEGER,
     producing_country INTEGER REFERENCES country(id),
     slogan VARCHAR(512),
-    desription VARCHAR(2048),
+    description VARCHAR(2048),
 
     -- who made&
     regiser INTEGER REFERENCES person(id),
@@ -74,13 +74,13 @@ CREATE TABLE film (
     -- информация о дистрибюторе и дате появления в стране / мире - в таблице distribution
 
     min_age Integer,
-    duration Time,
-    MPAA_rating INTEGER REFERENCES MPAA(id)
+    duration Interval,  -- минуты. В часы переччитают потом
+    mpaa_id INTEGER REFERENCES mpaa(id)
 );
 
 CREATE TABLE distributor (
     id SERIAL PRIMARY KEY,
-    name VARCHAR(50)
+    title VARCHAR(50)
 );
 
 CREATE TABLE distribution (
@@ -88,7 +88,8 @@ CREATE TABLE distribution (
     film_id INTEGER REFERENCES film(id),
     country_id INTEGER REFERENCES country(id), 
     release Date,
-    CONSTRAINT one_film_distributor_per_country PRIMARY KEY (distributor_id, film_id, country_id)
+    isDVD BOOLEAN,
+    CONSTRAINT one_film_distributor_per_country PRIMARY KEY (distributor_id, film_id, country_id, isDVD)
 );
 
 CREATE TABLE language (
@@ -160,6 +161,13 @@ CREATE TABLE review (
 );
 
 
+INSERT INTO mpaa (id, letter, description, full_desription)
+VALUES (
+    1,
+    'R',
+    'Детям до 17 лет обязательно присутствие родителей',
+    'Рейтинг R получают фильмы, в содержании которых обязательно содержится материал, предназначенный только для взрослой аудитории...'
+);
 
 INSERT INTO person (id, forename, surname)
 VALUES 
@@ -194,7 +202,9 @@ VALUES
 INSERT INTO country(id, name, flag)
 VALUES
     (1, 'USA', 'U+1F1FA U+1F1F8'),
-    (2, 'Germany', 'U+1F1E9 U+1F1EA')
+    (2, 'Germany', 'U+1F1E9 U+1F1EA'),
+    (3, 'Russia', 'U+1F1F7 U+1F1FA'),
+    (4, 'world', NULL)
 ;
 
 INSERT INTO film
@@ -205,7 +215,7 @@ INSERT INTO film
     release_year,
     producing_country,
     slogan,
-    desription,
+    description,
     -- crew
     regiser,
     scenarist,
@@ -217,8 +227,10 @@ INSERT INTO film
     budget,
     marketing,
     fees_usa,
-    fees_world
-
+    fees_world,
+    min_age,
+    mpaa_id,
+    duration
 )
 VALUES 
 (
@@ -228,7 +240,7 @@ VALUES
     1999,              -- release_year
     1,                 -- producing_country (USA)
     'Пол Эджкомб не верил в чудеса. Пока не столкнулся с одним из них', -- slogan
-    'В тюрьме для смертников...',                                       -- desription
+    'В тюрьме для смертников...',                                       -- description
     1,   -- regiser     Фрэнк Дарабонт
     2,   -- scenarist   Стивен Кинг
     1,   -- producer    Фрэнк Дарабонт
@@ -239,7 +251,10 @@ VALUES
     60000000,    -- buget
     30000000,    -- marketing
     136801374,   -- fees_usa
-    286801374    -- fees_worls
+    286801374,    -- fees_worls
+    16,
+    1, -- 'R'
+    interval '189' minute 
 );
 
 INSERT INTO genre (id, name) 
@@ -283,6 +298,19 @@ VALUES
     (1, 21, false)
 ;
 
+INSERT INTO distributor (id, title)
+VALUES 
+    (1, 'West'),
+    (2, 'WestVideo'),
+    (3, 'NetFlix')
+;
+
+INSERT INTO distribution (film_id, distributor_id, country_id, isDVD)
+VALUES 
+    (1, 1, 3, false), -- West - Russia
+    (1, 2, 3, true),   -- West Video - Russia (DVD)
+    (1, 3, 4, false)  -- Netflix - world
+;
 
 INSERT INTO reviewer (id, nickname)
 VALUES
